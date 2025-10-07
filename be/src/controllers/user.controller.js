@@ -37,7 +37,16 @@ export const registerUser = asyncHandler(async (req, res) => {
   }
 
   const avatarLocalPath = req.files?.avatar[0]?.path;
-  const coverImageLocalPath = req.files?.coverImage[0]?.path;
+  // const coverImageLocalPath = req.files?.coverImage[0]?.path;
+  let coverImageLocalPath;
+
+  if (
+    req.files &&
+    Array.isArray(req.files.coverImage) &&
+    req.files.coverImage.length > 0
+  ) {
+    coverImageLocalPath = req.files?.coverImage[0]?.path;
+  }
 
   if (!avatarLocalPath) {
     throw new ApiError(
@@ -46,16 +55,7 @@ export const registerUser = asyncHandler(async (req, res) => {
     );
   }
 
-  if (!avatarLocalPath) {
-    throw new ApiError(
-      httpStatusCodes[400].code,
-      httpStatusCodes[400].message + ". Cover image is required"
-    );
-  }
-
-  console.log(avatarLocalPath);
   const avatarImageRes = await uploadOnCloudinary(avatarLocalPath);
-  console.log(avatarImageRes);
 
   const coverImageRes = await uploadOnCloudinary(coverImageLocalPath);
 
@@ -72,11 +72,11 @@ export const registerUser = asyncHandler(async (req, res) => {
     coverImage: coverImageRes?.url || "",
   });
 
-  const createdError = await User.findById(user._id).select(
+  const createdUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
 
-  if (!createdError) {
+  if (!createdUser) {
     throw new ApiError(
       httpStatusCodes[500].code,
       httpStatusCodes[400].message +
@@ -89,7 +89,7 @@ export const registerUser = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         httpStatusCodes[200].code,
-        user,
+        createdUser,
         httpStatusCodes[201].message + ". User created successfully!"
       )
     );
