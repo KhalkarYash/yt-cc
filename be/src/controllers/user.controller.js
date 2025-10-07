@@ -9,7 +9,9 @@ import { httpStatusCodes } from "../utils/httpCodes.js";
 export const registerUser = asyncHandler(async (req, res) => {
   const { email, fullName, userName, password } = req.body;
 
-  if (![fullName, email, userName].some((field) => field.trim() === "")) {
+  if (
+    [fullName, email, userName, password].some((field) => field.trim() === "")
+  ) {
     throw new ApiError(
       httpStatusCodes[400].code,
       httpStatusCodes[400].message + ". All fields are required"
@@ -23,7 +25,7 @@ export const registerUser = asyncHandler(async (req, res) => {
     );
   }
 
-  const existingUser = User.findOne({
+  const existingUser = await User.findOne({
     $or: [{ userName }, { email }],
   });
 
@@ -34,11 +36,8 @@ export const registerUser = asyncHandler(async (req, res) => {
     );
   }
 
-  const avatarLocalPath = req.files?.avatar[0].path;
-
-  console.log(req.files);
-
-  const coverImageLocalPath = req.files?.coverImage[0].path;
+  const avatarLocalPath = req.files?.avatar[0]?.path;
+  const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
   if (!avatarLocalPath) {
     throw new ApiError(
@@ -54,7 +53,9 @@ export const registerUser = asyncHandler(async (req, res) => {
     );
   }
 
+  console.log(avatarLocalPath);
   const avatarImageRes = await uploadOnCloudinary(avatarLocalPath);
+  console.log(avatarImageRes);
 
   const coverImageRes = await uploadOnCloudinary(coverImageLocalPath);
 
