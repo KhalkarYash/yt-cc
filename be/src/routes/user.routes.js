@@ -25,5 +25,22 @@ router.route("/logout").post(verifyJWT, userController.logoutUser);
 router
   .route("/refresh-token")
   .post(verifyJWT, userController.refreshAccessToken);
+router
+  .route("/change-password")
+  .post(verifyJWT, userController.changeCurrentPassword);
+router.route("/current-user").get(verifyJWT, userController.getCurrentUser);
+router
+  .route("/update-account")
+  .patch(verifyJWT, userController.updateAccountDetails);
+router
+  .route("/avatar")
+  .patch(verifyJWT, upload.single("avatar"), userController.updateUserAvatar);
+router
+  .route("/cover-image")
+  .patch(
+    verifyJWT,
+    upload.single("coverImage"),
+    userController.updateUserCoverImage
+  );
 
 export default router;
