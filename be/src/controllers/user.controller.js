@@ -4,7 +4,6 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.models.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { allRegex, cookieOptions } from "../constants.js";
-import { httpStatusCodes } from "../utils/httpCodes.js";
 import jwt from "jsonwebtoken";
 
 const generateAccessAndRefreshTokens = async (userId) => {
@@ -18,11 +17,7 @@ const generateAccessAndRefreshTokens = async (userId) => {
 
     return { accessToken, refreshToken };
   } catch (error) {
-    throw new ApiError(
-      httpStatusCodes[500].code,
-      httpStatusCodes[500].message +
-        "Something went wrong while generating token"
-    );
+    throw new ApiError(500, "Something went wrong while generating token");
   }
 };
 
@@ -32,17 +27,11 @@ export const registerUser = asyncHandler(async (req, res) => {
   if (
     [fullName, email, userName, password].some((field) => field.trim() === "")
   ) {
-    throw new ApiError(
-      httpStatusCodes[400].code,
-      httpStatusCodes[400].message + ". All fields are required"
-    );
+    throw new ApiError(400, "All fields are required");
   }
 
   if (!allRegex.email.test(email)) {
-    throw new ApiError(
-      httpStatusCodes[400].code,
-      httpStatusCodes[400].message + ". Enter a valid email"
-    );
+    throw new ApiError(400, "Enter a valid email");
   }
 
   const existingUser = await User.findOne({
@@ -50,10 +39,7 @@ export const registerUser = asyncHandler(async (req, res) => {
   });
 
   if (existingUser) {
-    throw new ApiError(
-      httpStatusCodes[409].code,
-      httpStatusCodes[409].message + ". User already exists"
-    );
+    throw new ApiError(409, "User already exists");
   }
 
   const avatarLocalPath = req.files?.avatar[0]?.path;
@@ -69,10 +55,7 @@ export const registerUser = asyncHandler(async (req, res) => {
   }
 
   if (!avatarLocalPath) {
-    throw new ApiError(
-      httpStatusCodes[400].code,
-      httpStatusCodes[400].message + ". Avatar is required"
-    );
+    throw new ApiError(400, "Avatar is required");
   }
 
   const avatarImageRes = await uploadOnCloudinary(avatarLocalPath);
@@ -97,41 +80,27 @@ export const registerUser = asyncHandler(async (req, res) => {
   );
 
   if (!createdUser) {
-    throw new ApiError(
-      httpStatusCodes[500].code,
-      httpStatusCodes[400].message +
-        ". Something went wrong while registering the user"
-    );
+    throw new ApiError(500, "Something went wrong while registering the user");
   }
 
-  return res.status(httpStatusCodes[201].code).json({
-    data: new ApiResponse(httpStatusCodes[200].code, createdUser),
-    message: httpStatusCodes[201].message + ". User created successfully!",
-  });
+  return res
+    .status(201)
+    .json(new ApiResponse(200, createdUser, "User created successfully!"));
 });
 
 export const loginUser = asyncHandler(async (req, res) => {
   const { email, userName, password } = req.body;
 
   if (!email && !userName) {
-    throw new ApiError(
-      httpStatusCodes[400].code,
-      httpStatusCodes[400].message + ". Credentials missing"
-    );
+    throw new ApiError(400, "Credentials missing");
   }
 
   if (!allRegex.email.test(email)) {
-    throw new ApiError(
-      httpStatusCodes[400].code,
-      httpStatusCodes[400].message + ". Email invalid"
-    );
+    throw new ApiError(400, "Email invalid");
   }
 
   if (password.trim() === "") {
-    throw new ApiError(
-      httpStatusCodes[400].code,
-      httpStatusCodes[400].message + ". All fields are required"
-    );
+    throw new ApiError(400, "All fields are required");
   }
 
   const user = await User.findOne({
@@ -139,19 +108,13 @@ export const loginUser = asyncHandler(async (req, res) => {
   });
 
   if (!user) {
-    throw new ApiError(
-      httpStatusCodes[404].code,
-      httpStatusCodes[404].message + ". User doesn't exist"
-    );
+    throw new ApiError(404, "User doesn't exist");
   }
 
   const isPasswordValid = await user.isPasswordCorrect(password);
 
   if (!isPasswordValid) {
-    throw new ApiError(
-      httpStatusCodes[401].code,
-      httpStatusCodes[401].message + ". Invalid user credentials"
-    );
+    throw new ApiError(401 + "Invalid user credentials");
   }
 
   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
@@ -163,19 +126,18 @@ export const loginUser = asyncHandler(async (req, res) => {
   );
 
   return res
-    .status(httpStatusCodes[200].code)
+    .status(200)
     .cookie("accessToken", accessToken, cookieOptions)
     .cookie("refreshToken", refreshToken, cookieOptions)
     .json(
       new ApiResponse(
-        httpStatusCodes[200].code,
+        200,
         {
           user: loggedInUser,
           accessToken,
           refreshToken,
         },
-
-        httpStatusCodes[200].message + ". User logged in successfully!"
+        "User logged in successfully!"
       )
     );
 });
@@ -194,28 +156,17 @@ export const logoutUser = asyncHandler(async (req, res) => {
   );
 
   return res
-    .status(httpStatusCodes[200].code)
+    .status(200)
     .clearCookie("accessToken", cookieOptions)
     .clearCookie("refreshToken", cookieOptions)
-    .json(
-      new ApiResponse(
-        httpStatusCodes[200].code,
-        {},
-        httpStatusCodes[200].message + ". User logged out successfully!"
-      )
-    );
+    .json(new ApiResponse(200, {}, "User logged out successfully!"));
 });
 
 export const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken =
     req.cookies.refreshToken || req.body.refreshToken;
 
-  if (!incomingRefreshToken)
-    throw new ApiError(
-      httpStatusCodes[401].code,
-      httpStatusCodes[401].message,
-      "request"
-    );
+  if (!incomingRefreshToken) throw new ApiError(401, "Invalid Request");
 
   try {
     const decodedToken = jwt.verify(
@@ -223,26 +174,14 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
       process.env.REFRESH_TOKEN_SECRET
     );
 
-    if (!decodedToken)
-      throw new ApiError(
-        httpStatusCodes[401].code,
-        httpStatusCodes[401].message
-      );
+    if (!decodedToken) throw new ApiError(401, "Unauthorized");
 
     const user = await User.findById(decodedToken._id);
 
-    if (!user)
-      throw new ApiError(
-        httpStatusCodes[401].code,
-        httpStatusCodes[401].message,
-        ". Invalid refresh token"
-      );
+    if (!user) throw new ApiError(401, "Invalid refresh token");
 
     if (!(user.refreshToken === incomingRefreshToken))
-      throw new ApiError(
-        httpStatusCodes[401].code,
-        httpStatusCodes[401].message + ". Refresh token is expired or used"
-      );
+      throw new ApiError(401, "Refresh token is expired or used");
 
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
       user._id
@@ -252,24 +191,21 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     await user.save();
 
     res
-      .status(httpStatusCodes[200].code)
+      .status(200)
       .cookie("accessToken", accessToken, cookieOptions)
       .cookie("refreshToken", refreshToken, cookieOptions)
       .json(
         new ApiResponse(
-          httpStatusCodes[200].code,
+          200,
           {
             accessToken,
             refreshToken,
           },
-          httpStatusCodes[200].message + ". Access token refreshed"
+          "Access token refreshed"
         )
       );
   } catch (error) {
-    throw new ApiError(
-      httpStatusCodes[401].code,
-      error?.message || "Invalid refresh token."
-    );
+    throw new ApiError(401, error?.message || "Invalid refresh token.");
   }
 });
 
@@ -286,10 +222,7 @@ export const changeCurrentPassword = asyncHandler(async (req, res) => {
   const isPasswordCorrect = await user.isPasswordCorrect(user.password);
 
   if (!isPasswordCorrect) {
-    throw new ApiError(
-      httpStatusCodes[400].code,
-      httpStatusCodes[400].message + ". Invalid old password."
-    );
+    throw new ApiError(400, "Invalid old password.");
   }
 
   user.password = newPassword;
